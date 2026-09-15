@@ -1,5 +1,13 @@
 # Current priority: camera AR (v0.2)
 
+## Current interface: camera AR only
+
+As of 2026-09-15, the site opens directly to camera setup. Location selection,
+permission recovery, search and details belong to that flow. Closing/stopping a
+session returns to setup; the map dashboard, time travel and mode selector are
+not exposed. Earlier map/fallback descriptions below are historical and are
+superseded by this user-requested interface change.
+
 The user clarified on 2026-09-15 that camera pointing and object information are
 required now, equally for iPhone Safari and Android Chrome. Camera AR is implemented
 in this release, rather than deferred to the earlier v0.3 roadmap below. See

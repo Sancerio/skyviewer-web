@@ -1,21 +1,23 @@
 # SkyViewer Web
 
-A little closer to the cosmos. A free, open-source sky map that runs in your browser.
+A free, open-source camera AR sky viewer that runs in your phone browser.
 
 [Open the app](https://sancerio.github.io/skyviewer-web/)
 
-## Explore
+## Point and explore
 
-- 5,044 real catalog stars and all 88 western constellation figures.
-- Calculated Sun, Moon, and seven planets, with altitude, azimuth and magnitude.
-- Drag, keyboard navigation, zoom, search, and object centering.
-- City presets, manual coordinates, and opt-in geolocation.
-- Live sky or UTC time travel (1900–2100).
-- Constellation, label, coordinate-grid and red night-display controls.
-- Camera AR: rear-camera preview with heading, tilt and roll tracking, portrait/landscape support, north calibration and adjustable overlay scale.
-- Point-and-learn object labels, catalog/identifier search, target turn/tilt guidance, and information cards with magnitude, coordinates, star color index and solar-system distance.
-- Responsive desktop and phone layouts; permission-independent map fallback.
-- No account, API key, analytics, or backend. Fonts and catalogs are bundled.
+The app opens directly to Camera AR setup. Confirm your location, allow camera
+and motion access, then point your phone at the sky. There is no map dashboard or
+mode selector. Stopping the camera returns to setup; permissions are never
+requested automatically.
+
+- 5,044 catalog stars plus calculated Sun, Moon and seven planets.
+- Rear-camera overlay with heading, tilt and roll, portrait/landscape support,
+  north calibration and adjustable overlay scale.
+- Tap labels or search for objects, follow target guidance and read available facts.
+- City presets, manual coordinates and opt-in geolocation inside camera setup.
+- Current-time positions; camera/motion errors stay in the camera flow with retry.
+- No account, API key, analytics, recording or backend. Catalog and fonts are bundled.
 
 The initial location is explicitly labeled Singapore. It is a preset, not a guess
 at your location. Enter another location or request geolocation to change it.
@@ -67,11 +69,10 @@ retained in `src/data`; `npm run catalog` regenerates the smaller browser subset
 
 ## Limits
 
-This is a sky map, not a weather or naked-eye visibility prediction. Geometric
+This calculated sky overlay does not predict weather or naked-eye visibility. Geometric
 positions omit atmospheric refraction, terrain, extinction and light pollution;
 catalog stars omit proper motion. Discs are symbols, not angular sizes or a Moon
-phase rendering. Western constellation lines are illustrative figures, not
-boundaries. Camera AR uses full device orientation and estimated camera field of view; physical iOS/Android alignment testing remains outstanding. The separate map compass still follows heading only. No satellites, deep-sky images, offline service worker, or telescope control in v0.2.
+phase rendering. Camera AR uses full device orientation and estimated camera field of view; physical iOS/Android alignment testing remains outstanding. No satellites, deep-sky images, offline service worker, or telescope control in v0.2.
 Never point binoculars or a telescope at the Sun using this app.
 
 ## License

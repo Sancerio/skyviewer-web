@@ -189,12 +189,12 @@ async function openCameraAR(page: Page, options?: ARMockOptions) {
   await installARMock(page, options);
   await page.clock.install({ time: FIXED_NOW });
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "A little closer to the cosmos." }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: /Camera AR/ }).click();
   const dialog = page.getByRole("dialog", { name: "Camera AR" });
   await expect(dialog).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "A little closer to the cosmos." }),
+  ).toHaveCount(0);
+  await expect(page.locator(".camera-launch")).toHaveCount(0);
   return dialog;
 }
 
@@ -240,6 +240,10 @@ test("does not request a camera until the explicit AR start gesture", async ({
 }) => {
   const dialog = await openCameraAR(page);
 
+  await expect(
+    dialog.getByRole("button", { name: "Close camera AR" }),
+  ).toHaveCount(0);
+
   await expect
     .poll(() =>
       page.evaluate(
@@ -252,6 +256,9 @@ test("does not request a camera until the explicit AR start gesture", async ({
 
   await startCamera(dialog);
   await expect(dialog.locator(".ar-header small")).toHaveText("LIVE");
+  await expect(
+    dialog.getByRole("button", { name: "Close camera AR" }),
+  ).toBeVisible();
   const mock = await page.evaluate(
     () =>
       (
@@ -651,7 +658,7 @@ test("stopping AR releases the camera track and returns to setup", async ({
     .toBe(1);
 });
 
-test("stops a late camera stream resolved after the AR dialog closes", async ({
+test("stops a late camera stream and restores setup when camera AR closes", async ({
   page,
 }) => {
   const dialog = await openCameraAR(page, { camera: "pending" });
@@ -660,7 +667,15 @@ test("stops a late camera stream resolved after the AR dialog closes", async ({
     dialog.getByRole("button", { name: "Cancel camera request" }),
   ).toBeVisible();
   await dialog.getByRole("button", { name: "Close camera AR" }).click();
-  await expect(dialog).toBeHidden();
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByRole("button", {
+      name: "Use this location & start camera",
+    }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Close camera AR" }),
+  ).toHaveCount(0);
 
   await page.evaluate(() =>
     (

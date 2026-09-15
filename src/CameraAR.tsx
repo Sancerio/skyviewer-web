@@ -33,6 +33,7 @@ export default function CameraAR({
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const startButton = useRef<HTMLButtonElement>(null);
   const [date, setDate] = useState(() => new Date());
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
@@ -50,7 +51,7 @@ export default function CameraAR({
   const [playbackError, setPlaybackError] = useState("");
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
-    closeButton.current?.focus();
+    startButton.current?.focus();
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -430,14 +431,16 @@ export default function CameraAR({
               : "POINT. DISCOVER."}
           </small>
         </span>
-        <button
-          ref={closeButton}
-          className="ar-icon"
-          aria-label="Close camera AR"
-          onClick={close}
-        >
-          <X />
-        </button>
+        {(session.status === "active" || session.status === "starting") && (
+          <button
+            ref={closeButton}
+            className="ar-icon"
+            aria-label="Close camera AR"
+            onClick={close}
+          >
+            <X />
+          </button>
+        )}
       </header>
       {session.status !== "active" ? (
         <div className="ar-setup">
@@ -472,10 +475,11 @@ export default function CameraAR({
             </button>
           </div>
           <p className="ar-small">
-            Use your actual observing location. AR always uses the current time,
-            even if the map was in time travel.
+            Use your actual observing location. AR always shows the sky at the
+            current time.
           </p>
           <button
+            ref={startButton}
             className="primary-button"
             disabled={session.status === "starting"}
             onClick={() => {
@@ -508,6 +512,23 @@ export default function CameraAR({
             image recognition. Check alignment against a known star. Never aim
             optics at the Sun.
           </p>
+          <p className="ar-small">
+            <a
+              href="https://github.com/Sancerio/skyviewer-web"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open source
+            </a>
+            {" · "}
+            <a
+              href="./THIRD_PARTY_NOTICES.txt"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Data &amp; licenses
+            </a>
+          </p>
         </div>
       ) : (
         <>
@@ -527,8 +548,7 @@ export default function CameraAR({
           {!o ? (
             <div className="ar-callout" role="status">
               Waiting for motion data. Move the phone gently. If no data
-              arrives, check browser motion permissions or return to the sky
-              map.
+              arrives, check browser motion permissions and try again.
             </div>
           ) : !calibrated ? (
             <div className="ar-callout" role="status">

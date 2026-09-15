@@ -1,5 +1,13 @@
 # Camera AR: operation, architecture and verification
 
+## Current interface: camera AR only
+
+As of 2026-09-15, the site opens directly to camera setup. Location selection,
+permission recovery, search and details belong to that flow. Closing/stopping a
+session returns to setup; the map dashboard, time travel and mode selector are
+not exposed. Earlier map/fallback descriptions below are historical and are
+superseded by this user-requested interface change.
+
 ## What this version does
 
 Open **Camera AR**, check the displayed observing location, and tap **Use this
