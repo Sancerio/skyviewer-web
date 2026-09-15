@@ -1,3 +1,12 @@
+# Current priority: camera AR (v0.2)
+
+The user clarified on 2026-09-15 that camera pointing and object information are
+required now, equally for iPhone Safari and Android Chrome. Camera AR is implemented
+in this release, rather than deferred to the earlier v0.3 roadmap below. See
+[the competitive study](COMPETITIVE_RESEARCH.md) and [current AR specification](CAMERA_AR.md).
+The original map roadmap below is retained as design history; current implementation
+and outstanding physical-device acceptance are authoritative in CAMERA_AR.md.
+
 # SkyViewer Web: scope and delivery plan
 
 ## Product goal
