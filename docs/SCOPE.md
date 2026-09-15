@@ -108,3 +108,6 @@ would add a network dependency and must remain distinct from geometric visibilit
   exact pinned paths and notices are in DATA.md.
 - [MDN DeviceOrientationEvent](https://developer.mozilla.org/en-US/docs/Web/API/DeviceOrientationEvent):
   absolute/relative orientation and permission/browser support constraints.
+
+- Rendering currently omits constellation segments with a rear-camera endpoint;
+  full 3D near-plane clipping is a future refinement.

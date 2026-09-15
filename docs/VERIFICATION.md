@@ -9,8 +9,30 @@ are retained by the workflow, including failure evidence.
 
 ## Managed-browser checks (2026-09-15)
 
-In progress during initial development; final evidence is recorded below after
-the published-build smoke test.
+Initial production commit `dbba437` passed [GitHub Actions run 34961951640](https://github.com/Sancerio/skyviewer-web/actions/runs/34961951640): 14 numerical tests, production TypeScript/build, 8 Chromium end-to-end tests, and Pages deployment. Browser tests completed in 11.4 seconds.
+
+The published HTTPS page was verified on 2026-09-15 at approximately 11:13 UTC:
+search Saturn, select details, step time, return to Now and reset. Fresh production
+browser logs contained zero errors or warnings. The server returned HTTP 200.
+
+Managed desktop and 390 × 844 mobile checks also covered Sirius below-horizon
+centering, London/Sydney presets, manual coordinates (0, 0), direct UTC entry,
+hour steps, Now, zoom/reset, grid/night controls, the mobile guide dialog, and
+compass permission-denial messaging. The mobile document width equaled its
+390-pixel viewport: no horizontal overflow.
+
+## Independent review and regression coverage
+
+Independent review identified delayed geolocation overwriting a newer choice and
+constellation lines disappearing at viewport edges or high zoom. Both are fixed
+with request invalidation and segment clipping. A stale below-horizon banner on
+time changes and a zero-size canvas crash during resizing were also corrected. Regression tests cover these changes, invalid
+coordinates/dates, and projection boundaries. The [Actions page](https://github.com/Sancerio/skyviewer-web/actions)
+contains the final commit's authoritative test/deployment result and downloadable
+browser report.
+
+See [desktop](screenshots/desktop.png) and [mobile](screenshots/mobile.png)
+for initial published-page captures (before the regression fixes).
 
 ## Physical-device release gate
 

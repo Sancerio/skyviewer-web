@@ -259,7 +259,7 @@ export function project(
   fov: number,
   width: number,
   height: number,
-): { x: number; y: number; visible: boolean } {
+): { x: number; y: number; visible: boolean; inFront: boolean } {
   validateAltitude(altitude, "Altitude");
   validateAltitude(centerAlt, "Center altitude");
   for (const [label, value] of [
@@ -311,14 +311,10 @@ export function project(
   const scale = width / 2 / Math.tan((fov * DEG_TO_RAD) / 2);
   const x = width / 2 + (cameraX / divisor) * scale;
   const y = height / 2 - (cameraY / divisor) * scale;
-  const visible =
-    cameraZ > PROJECTION_EPSILON &&
-    x >= 0 &&
-    x <= width &&
-    y >= 0 &&
-    y <= height;
+  const inFront = cameraZ > PROJECTION_EPSILON;
+  const visible = inFront && x >= 0 && x <= width && y >= 0 && y <= height;
 
-  return { x, y, visible };
+  return { x, y, visible, inFront };
 }
 
 function longitudeToRa(longitude: number): number {

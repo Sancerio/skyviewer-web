@@ -289,3 +289,77 @@ test.describe("mobile layout", () => {
     expect(finalWidths.document).toBeLessThanOrEqual(finalWidths.viewport);
   });
 });
+
+for (const action of ["choose a city", "close the dialog"])
+  test(`ignores a delayed location result after ${action}`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: {
+          getCurrentPosition: (
+            success: (p: {
+              coords: { latitude: number; longitude: number };
+            }) => void,
+          ) => {
+            (
+              window as unknown as { deliverLocation: () => void }
+            ).deliverLocation = () =>
+              success({ coords: { latitude: 0, longitude: 0 } });
+          },
+        },
+      });
+    });
+    await openFixedSky(page);
+    const dialog = await openLocationDialog(page);
+    await dialog.getByRole("button", { name: "Use my location" }).click();
+    await dialog.getByRole("button", { name: "London", exact: true }).click();
+    await page.evaluate(() =>
+      (window as unknown as { deliverLocation: () => void }).deliverLocation(),
+    );
+    await expect(page.locator(".location-button")).toContainText("London");
+    await expect(page.getByRole("status")).toContainText(
+      "Sky updated for London",
+    );
+  });
+
+test("removes the below-horizon warning when time makes the object rise", async ({
+  page,
+}) => {
+  await openFixedSky(page);
+  await page.getByLabel("Search celestial objects").fill("Sirius");
+  await page.locator(".object-row").filter({ hasText: "Sirius" }).click();
+  await expect(page.getByRole("status")).toContainText("below the horizon");
+  await page.getByLabel("OBSERVING TIME · UTC").fill("2026-09-15T22:00");
+  await page.getByLabel("OBSERVING TIME · UTC").blur();
+  await expect(page.locator(".selection-card")).toContainText(
+    "Above the horizon",
+  );
+  await expect(page.getByRole("status")).toHaveCount(0);
+});
+
+test("survives a zero-size canvas during layout changes", async ({ page }) => {
+  await openFixedSky(page);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.locator(".sky-panel").evaluate((element) => {
+    (element as HTMLElement).style.display = "none";
+  });
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
+  await expect(
+    page.getByRole("heading", { name: "A little closer to the cosmos." }),
+  ).toBeVisible();
+  await page.locator(".sky-panel").evaluate((element) => {
+    (element as HTMLElement).style.display = "";
+  });
+  await expect(page.locator("canvas")).toBeVisible();
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect(page.locator(".map-bottom")).toContainText("90° FIELD OF VIEW");
+  expect(errors).toEqual([]);
+});

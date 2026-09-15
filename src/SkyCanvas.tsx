@@ -5,6 +5,7 @@ import {
   type Location,
   getConstellationLines,
 } from "./sky";
+import { clipLineToViewport } from "./clip";
 export type View = { az: number; alt: number; fov: number };
 type Props = {
   objects: SkyObject[];
@@ -36,12 +37,10 @@ export default function SkyCanvas(p: Props) {
   } | null>(null);
   useEffect(() => {
     const c = ref.current!;
-    const observer = new ResizeObserver(([entry]) =>
-      setSize({
-        width: entry.contentRect.width,
-        height: entry.contentRect.height,
-      }),
-    );
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) setSize({ width, height });
+    });
     observer.observe(c);
     return () => observer.disconnect();
   }, []);
@@ -49,6 +48,7 @@ export default function SkyCanvas(p: Props) {
     const canvas = ref.current!;
     const ctx = canvas.getContext("2d")!;
     const { width: w, height: h } = size;
+    if (w <= 0 || h <= 0) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = w * dpr;
     canvas.height = h * dpr;
@@ -76,16 +76,16 @@ export default function SkyCanvas(p: Props) {
       ctx.strokeStyle = color;
       ctx.lineWidth = width;
       ctx.beginPath();
-      let previous: { x: number; y: number; visible: boolean } | null = null;
+      let previous: ReturnType<typeof point> | null = null;
       for (const c of coords) {
         const q = point(c.altitude, c.azimuth);
-        if (
-          q.visible &&
-          previous?.visible &&
-          Math.hypot(q.x - previous.x, q.y - previous.y) < w / 2
-        )
-          ctx.lineTo(q.x, q.y);
-        else ctx.moveTo(q.x, q.y);
+        if (previous) {
+          const clipped = clipLineToViewport(previous, q, w, h);
+          if (clipped) {
+            ctx.moveTo(clipped[0].x, clipped[0].y);
+            ctx.lineTo(clipped[1].x, clipped[1].y);
+          }
+        }
         previous = q;
       }
       ctx.stroke();

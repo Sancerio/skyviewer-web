@@ -56,6 +56,7 @@ export default function App() {
   const [lon, setLon] = useState("103.8198");
   const [locationError, setLocationError] = useState("");
   const [following, setFollowing] = useState(false);
+  const locationRequest = useRef(0);
   const sensorCleanup = useRef<() => void>(() => {});
   const modalClose = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -105,12 +106,17 @@ export default function App() {
       setMessage(`${o.name} is below the horizon at this time and location.`);
     else setMessage("");
   }
+  function closeModal() {
+    locationRequest.current += 1;
+    setLocating(false);
+    setModal(null);
+  }
   function changeLocation(l: Location) {
     setLocation(l);
     setLat(String(l.latitude));
     setLon(String(l.longitude));
     setLocationError("");
-    setModal(null);
+    closeModal();
     setMessage(`Sky updated for ${l.name}.`);
   }
   function locate() {
@@ -120,10 +126,12 @@ export default function App() {
       );
       return;
     }
+    const request = ++locationRequest.current;
     setLocating(true);
     setLocationError("");
     navigator.geolocation.getCurrentPosition(
       (p) => {
+        if (request !== locationRequest.current) return;
         setLocating(false);
         changeLocation({
           name: "Your location",
@@ -132,6 +140,7 @@ export default function App() {
         });
       },
       () => {
+        if (request !== locationRequest.current) return;
         setLocating(false);
         setLocationError(
           "Location could not be accessed. Choose a city or enter coordinates instead.",
@@ -228,6 +237,13 @@ export default function App() {
         ),
     );
   };
+  const statusMessage = message.includes(
+    "is below the horizon at this time and location.",
+  )
+    ? chosen && chosen.altitude < 0
+      ? `${chosen.name} is below the horizon at this time and location.`
+      : ""
+    : message;
   const phase =
     sun && sun.altitude > 0
       ? "Daytime"
@@ -637,9 +653,9 @@ export default function App() {
             </button>
           </div>
         </section>
-        {message && (
+        {statusMessage && (
           <div className="status-message" role="status">
-            {message}
+            {statusMessage}
             <button
               aria-label="Dismiss message"
               className="icon-button"
@@ -663,7 +679,7 @@ export default function App() {
         <div
           className="modal-backdrop"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setModal(null);
+            if (e.target === e.currentTarget) closeModal();
           }}
         >
           <section
@@ -672,7 +688,7 @@ export default function App() {
             aria-modal="true"
             aria-labelledby="modal-title"
             onKeyDown={(e) => {
-              if (e.key === "Escape") setModal(null);
+              if (e.key === "Escape") closeModal();
               if (e.key === "Tab") {
                 const controls = Array.from(
                   e.currentTarget.querySelectorAll<HTMLElement>(
@@ -695,7 +711,7 @@ export default function App() {
               ref={modalClose}
               className="icon-button modal-close"
               aria-label="Close dialog"
-              onClick={() => setModal(null)}
+              onClick={closeModal}
             >
               <X size={20} />
             </button>

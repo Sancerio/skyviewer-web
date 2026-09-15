@@ -140,3 +140,35 @@ describe("project", () => {
     expect(project(0, 60, 0, 0, 90, 800, 400).visible).toBe(false);
   });
 });
+
+describe("input and projection boundaries", () => {
+  it("rejects invalid dates and out-of-range observer coordinates", () => {
+    expect(() => getSky(new Date("invalid"), equator)).toThrow(RangeError);
+    expect(() =>
+      getSky(new Date("2026-09-15T00:00:00Z"), {
+        name: "Invalid",
+        latitude: 91,
+        longitude: 0,
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      getSky(new Date("2026-09-15T00:00:00Z"), {
+        name: "Invalid",
+        latitude: 0,
+        longitude: 181,
+      }),
+    ).toThrow(RangeError);
+    expect(() => project(0, 0, 0, 0, 180, 960, 540)).toThrow(RangeError);
+    expect(() => project(0, 0, 0, 0, 90, 0, 540)).toThrow(RangeError);
+  });
+  it("keeps zenith finite and places east to the right of north", () => {
+    const zenith = project(90, 0, 0, 90, 90, 960, 540);
+    expect(zenith.visible).toBe(true);
+    expect(zenith.x).toBeCloseTo(480, 6);
+    expect(zenith.y).toBeCloseTo(270, 6);
+    const eastOfNorth = project(0, 30, 0, 0, 90, 960, 540);
+    const westOfNorth = project(0, 330, 0, 0, 90, 960, 540);
+    expect(eastOfNorth.x).toBeGreaterThan(480);
+    expect(westOfNorth.x).toBeLessThan(480);
+  });
+});
