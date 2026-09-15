@@ -16,6 +16,8 @@ import constellationLineData from "./data/constellations.lines.json";
 import catalog from "./data/catalog.json";
 
 export interface SkyObject {
+  /** Observer-to-object distance in astronomical units; solar-system objects only. */
+  distanceAu?: number;
   id: string;
   name: string;
   kind: "star" | "planet" | "moon" | "sun";
@@ -29,6 +31,8 @@ export interface SkyObject {
   azimuth: number;
   magnitude: number;
   constellation?: string;
+  colorIndex?: number;
+  aliases?: string[];
 }
 
 export interface Location {
@@ -46,7 +50,7 @@ export interface ConstellationLine {
 
 interface StarFeature {
   id: number;
-  properties: { mag: number };
+  properties: { mag: number; bv?: string };
   geometry: { coordinates: [number, number] };
 }
 
@@ -75,6 +79,8 @@ interface CatalogStar {
   magnitude: number;
   name: string;
   constellation?: string;
+  colorIndex?: number;
+  aliases?: string[];
 }
 
 const DEG_TO_RAD = Math.PI / 180;
@@ -97,6 +103,15 @@ const catalogStars: CatalogStar[] = (
   const metadata = starNames[String(feature.id)];
   const abbreviation = metadata?.c;
   const designation = metadata?.bayer || metadata?.flam;
+  const aliases = [
+    `HIP ${feature.id}`,
+    ...[metadata?.bayer, metadata?.flam]
+      .filter(Boolean)
+      .flatMap((d) => [
+        `${d} ${abbreviation ?? ""}`,
+        `${d} ${constellationNames.get(abbreviation ?? "") ?? ""}`,
+      ]),
+  ];
   const name =
     metadata?.name ||
     (designation && abbreviation
@@ -107,9 +122,15 @@ const catalogStars: CatalogStar[] = (
 
   return {
     id: feature.id,
+    aliases,
     ra: longitudeToRa(feature.geometry.coordinates[0]),
     dec: feature.geometry.coordinates[1],
     magnitude: feature.properties.mag,
+    colorIndex:
+      feature.properties.bv?.trim() &&
+      Number.isFinite(Number(feature.properties.bv))
+        ? Number(feature.properties.bv)
+        : undefined,
     name,
     constellation: abbreviation
       ? (constellationNames.get(abbreviation) ?? abbreviation)
@@ -171,6 +192,8 @@ export function getSky(date: Date, location: Location): SkyObject[] {
       altitude: horizontal.altitude,
       azimuth: horizontal.azimuth,
       magnitude: star.magnitude,
+      colorIndex: star.colorIndex,
+      aliases: star.aliases,
       constellation: star.constellation,
     };
   });
@@ -188,6 +211,7 @@ export function getSky(date: Date, location: Location): SkyObject[] {
       altitude: horizontal.altitude,
       azimuth: horizontal.azimuth,
       magnitude: Illumination(body, date).mag,
+      distanceAu: equatorial.dist,
     };
   });
 

@@ -12,7 +12,9 @@ A little closer to the cosmos. A free, open-source sky map that runs in your bro
 - City presets, manual coordinates, and opt-in geolocation.
 - Live sky or UTC time travel (1900–2100).
 - Constellation, label, coordinate-grid and red night-display controls.
-- Responsive desktop and phone layouts; optional experimental phone compass.
+- Camera AR: rear-camera preview with heading, tilt and roll tracking, portrait/landscape support, north calibration and adjustable overlay scale.
+- Point-and-learn object labels, catalog/identifier search, target turn/tilt guidance, and information cards with magnitude, coordinates, star color index and solar-system distance.
+- Responsive desktop and phone layouts; permission-independent map fallback.
 - No account, API key, analytics, or backend. Fonts and catalogs are bundled.
 
 The initial location is explicitly labeled Singapore. It is a preset, not a guess
@@ -41,7 +43,7 @@ npm run build
 On Linux, run the automated browser suite:
 
 ```sh
-npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium webkit
 npm run test:e2e
 ```
 
@@ -56,6 +58,8 @@ React + TypeScript + Vite, a Canvas 2D perspective sky renderer, and Astronomy
 Engine 2.1.19. Calculations stay on the client. Original pinned catalog files are
 retained in `src/data`; `npm run catalog` regenerates the smaller browser subset.
 
+- [Competitive study: SkyView, Sky Guide, Star Walk 2, Stellarium](docs/COMPETITIVE_RESEARCH.md)
+- [Camera AR operation and validation](docs/CAMERA_AR.md)
 - [Product scope, architecture, and roadmap](docs/SCOPE.md)
 - [Data provenance, coordinate conventions, and attribution](docs/DATA.md)
 - [Verification plan and results](docs/VERIFICATION.md)
@@ -67,9 +71,7 @@ This is a sky map, not a weather or naked-eye visibility prediction. Geometric
 positions omit atmospheric refraction, terrain, extinction and light pollution;
 catalog stars omit proper motion. Discs are symbols, not angular sizes or a Moon
 phase rendering. Western constellation lines are illustrative figures, not
-boundaries. Phone compass follows horizontal heading only and remains
-experimental until physical iOS/Android verification. No camera AR, tilt tracking,
-satellites, deep-sky images, offline service worker, or telescope control in v0.1.
+boundaries. Camera AR uses full device orientation and estimated camera field of view; physical iOS/Android alignment testing remains outstanding. The separate map compass still follows heading only. No satellites, deep-sky images, offline service worker, or telescope control in v0.2.
 Never point binoculars or a telescope at the Sun using this app.
 
 ## License

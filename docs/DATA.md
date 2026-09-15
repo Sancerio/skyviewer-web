@@ -81,3 +81,13 @@ unchanged pinned source files. It removes unused star metadata and unused name
 fields; coordinates and magnitudes retain their original precision. Original
 files remain in the repository for auditing and reproducibility. Only the subset
 is imported into the client bundle.
+
+## Object information
+
+The compact catalog also retains B−V color index where provided, plus proper-name,
+Bayer, Flamsteed, and Hipparcos aliases. Search normalizes Greek designations,
+accents, spacing, and punctuation. Solar-system distances are topocentric distances
+from Astronomy Engine, in astronomical units (Moon also displayed in kilometres).
+Stellar distances and spectral classes are not in this subset and are not invented;
+star information links to SIMBAD by Hipparcos identifier. Planet information links
+to NASA. These external references open only when selected by the user.

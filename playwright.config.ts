@@ -20,7 +20,18 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: "**/ar.spec.ts",
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "ar-android",
+      testMatch: "**/ar.spec.ts",
+      use: { ...devices["Pixel 5"], browserName: "chromium" },
+    },
+    {
+      name: "ar-ios",
+      testMatch: "**/ar.spec.ts",
+      use: { ...devices["iPhone 13"], browserName: "webkit" },
     },
   ],
   webServer: {

@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowUpRight,
   Check,
+  Camera,
   ChevronLeft,
   ChevronRight,
   Compass,
@@ -24,6 +25,9 @@ import {
   Sun,
   X,
 } from "lucide-react";
+import { matchesObject } from "./search";
+import CameraAR from "./CameraAR";
+import ObjectInformation from "./ObjectInformation";
 import SkyCanvas, { type View } from "./SkyCanvas";
 import { getSky, direction, type Location, type SkyObject } from "./sky";
 const cities: Location[] = [
@@ -38,6 +42,8 @@ const cities: Location[] = [
 const degrees = (n: number) => `${n.toFixed(1)}°`;
 const isoInput = (d: Date) => d.toISOString().slice(0, 16);
 export default function App() {
+  const [arOpen, setArOpen] = useState(false);
+  const [moreInfo, setMoreInfo] = useState(false);
   const [location, setLocation] = useState<Location>(cities[0]);
   const [date, setDate] = useState(new Date());
   const [live, setLive] = useState(true);
@@ -81,9 +87,7 @@ export default function App() {
         .filter((o) =>
           !query
             ? o.altitude > 0 && (o.kind !== "star" || o.magnitude < 2.5)
-            : `${o.name} ${o.constellation || ""}`
-                .toLowerCase()
-                .includes(query.toLowerCase()),
+            : matchesObject(o, query),
         )
         .filter(
           (o) =>
@@ -95,6 +99,7 @@ export default function App() {
     [objects, query, filter],
   );
   function focusObject(o: SkyObject) {
+    setMoreInfo(false);
     setSelected(o.id);
     stopFollowing();
     setView((v) => ({
@@ -309,6 +314,18 @@ export default function App() {
             <ChevronRight size={16} />
           </button>
         </section>
+        <div className="experience-bar">
+          <span>Explore on the map, or point your phone at the sky.</span>
+          <button
+            className="camera-launch"
+            onClick={() => {
+              stopFollowing();
+              setArOpen(true);
+            }}
+          >
+            <Camera size={18} /> Camera AR <ArrowUpRight size={15} />
+          </button>
+        </div>
         <div className="workspace">
           <section className="sky-panel" aria-label="Sky explorer">
             <div className="map-top">
@@ -425,6 +442,13 @@ export default function App() {
                     <dd>{chosen.magnitude.toFixed(1)}</dd>
                   </div>
                 </dl>
+                <button
+                  className="text-button"
+                  onClick={() => setMoreInfo(!moreInfo)}
+                >
+                  {moreInfo ? "Hide information" : "Object information ↗"}
+                </button>
+                {moreInfo && <ObjectInformation object={chosen} />}
                 <button
                   className="text-button"
                   onClick={() => focusObject(chosen)}
@@ -675,6 +699,16 @@ export default function App() {
           </span>
         </footer>
       </main>
+      {arOpen && (
+        <CameraAR
+          location={location}
+          onClose={() => setArOpen(false)}
+          onChangeLocation={() => {
+            setArOpen(false);
+            setModal("location");
+          }}
+        />
+      )}
       {modal && (
         <div
           className="modal-backdrop"
@@ -859,7 +893,9 @@ export default function App() {
                       <p>
                         Optional on supported HTTPS browsers. Hold the phone
                         flat with its top edge forward. It follows heading only;
-                        tilt remains manual. This release has no camera overlay.
+                        tilt remains manual. Open Camera AR for a rear-camera
+                        overlay with heading, tilt and roll. Camera alignment
+                        needs calibration and real-device checks.
                       </p>
                     </span>
                   </div>
