@@ -50,7 +50,8 @@ cards link to NASA. These external pages load only when the user opens a link.
 AR always uses the current time. Map time travel does not move the camera overlay
 to a past/future sky. Location is explicit and can be changed before starting.
 No sensor data means no object overlay; stale readings pause labels instead of
-leaving an apparently live, frozen sky. Move the phone to resume a current reading.
+leaving an apparently live, frozen sky. A muted camera track pauses labels and
+target guidance until the browser resumes capture. Move the phone to resume a current reading.
 
 ## Permission and lifecycle contract
 
@@ -90,7 +91,7 @@ landscape, rear rejection, calibrated heading and camera crop geometry. Linux
 Playwright projects exercise Chromium with Android viewport and WebKit with iPhone
 viewport using **mocked camera streams and synthetic sensor events**. They cover
 permissions, pose updates, calibration, search/details, cancellation, stopping,
-page hiding and sensor freshness. Existing map tests remain in the suite.
+page hiding, muted capture, video playback failure and sensor freshness. Existing map tests remain in the suite.
 
 These tests prove code paths and numerical conventions; they do not establish real
 camera-to-sky alignment. Before calling optical accuracy verified, test both actual

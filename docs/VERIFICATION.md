@@ -7,6 +7,14 @@ and production compilation. Run `npm run test:e2e` on Linux for the browser suit
 GitHub Actions gates deployment on these checks. Browser report/trace artifacts
 are retained by the workflow, including failure evidence.
 
+## Camera AR v0.2 verification (2026-09-15)
+
+The first camera implementation at `6635ab2` passed [CI run 34971251632](https://github.com/Sancerio/skyviewer-web/actions/runs/34971251632): 37 unit tests, production build, and 36 browser tests. Browser coverage includes 12 map regressions plus 12 synthetic camera/sensor scenarios in each of Chromium and WebKit.
+
+Independent review then found an inverse screen-rotation sign and missing muted-camera handling. Both were corrected and independently rechecked without remaining findings. The numerical suite now has 39 passing tests with physically consistent portrait and both landscape poses. Expanded browser regressions cover projected-star tapping, landscape, failed playback, and muted capture. The final revision's [Actions result](https://github.com/Sancerio/skyviewer-web/actions) is authoritative for their execution and deployment.
+
+Managed-browser checks covered camera setup at 390 × 844 and 844 × 390, scroll access in landscape, and expanded object information. Synthetic screenshots from both engines were inspected; information sheets and status backgrounds were made opaque enough to prevent competing labels behind their text. These screenshots represent mocked camera/sensor state, not an outdoor phone test.
+
 ## Managed-browser checks (2026-09-15)
 
 Initial production commit `dbba437` passed [GitHub Actions run 34961951640](https://github.com/Sancerio/skyviewer-web/actions/runs/34961951640): 14 numerical tests, production TypeScript/build, 8 Chromium end-to-end tests, and Pages deployment. Browser tests completed in 11.4 seconds.
@@ -34,11 +42,12 @@ browser report.
 See [desktop](screenshots/desktop.png) and [mobile](screenshots/mobile.png)
 for initial published-page captures (before the regression fixes).
 
-## Physical-device release gate
+## Physical-device release gate (current)
 
 The interactive map does not depend on sensors. Experimental compass behavior
-has not been verified against real physical iOS or Android devices. Before
-promoting compass accuracy or adding camera AR, complete these checks:
+has not been verified against real physical iOS or Android devices. Camera AR is now available as an experimental calculated overlay. Before
+promoting physical alignment accuracy, complete these checks and the
+[full camera field-test matrix](CAMERA_AR.md#verification-and-remaining-gate):
 
 - iPhone Safari on HTTPS: allow and decline motion permission, then reload.
 - Android Chrome on HTTPS: verify absolute heading is available and falls back
@@ -50,4 +59,4 @@ promoting compass accuracy or adding camera AR, complete these checks:
 - Allow, decline, timeout and revoke geolocation without losing manual controls.
 
 Responsive browser emulation and synthetic sensor events are not physical-device
-evidence. No camera, tilt, or native-equivalent alignment claims are made.
+evidence. Camera and tilt code paths have synthetic coverage; native-equivalent or measured optical accuracy is not claimed.

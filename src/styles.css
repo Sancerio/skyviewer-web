@@ -1307,7 +1307,7 @@ footer button {
   align-items: center;
   justify-content: space-between;
   padding: max(17px, env(safe-area-inset-top)) 22px 17px;
-  background: linear-gradient(#000b, transparent);
+  background: #080e14ed;
   z-index: 2;
 }
 .ar-header > span {
@@ -1405,6 +1405,9 @@ footer button {
   color: #e5a39b !important;
 }
 .ar-status {
+  background: #080e14eb;
+  padding: 5px 8px;
+  border-radius: 5px;
   position: absolute;
   top: 79px;
   left: 22px;
@@ -1451,6 +1454,9 @@ footer button {
   padding: 0;
 }
 .ar-accuracy {
+  background: #080e14eb;
+  padding: 5px 8px;
+  border-radius: 5px;
   position: absolute;
   top: 131px;
   left: 22px;
@@ -1558,7 +1564,7 @@ footer button {
   max-height: calc(100dvh - 230px);
   overflow: auto;
   border: 1px solid #60877488;
-  background: #102129f5;
+  background: #102129;
   border-radius: 12px;
   padding: 20px;
   backdrop-filter: blur(20px);

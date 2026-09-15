@@ -14,6 +14,7 @@ export type ARSession = {
   error: string;
   orientation: AROrientation | null;
   stream: MediaStream | null;
+  cameraPaused: boolean;
   start: () => Promise<void>;
   stop: () => void;
   videoSettings: {
@@ -73,6 +74,7 @@ export function useARSession(): ARSession {
   const [error, setError] = useState("");
   const [orientation, setOrientation] = useState<AROrientation | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraPaused, setCameraPaused] = useState(false);
   const [videoSettings, setVideoSettings] =
     useState<ARSession["videoSettings"]>(null);
 
@@ -110,6 +112,7 @@ export function useARSession(): ARSession {
     setError("");
     setOrientation(null);
     setStream(null);
+    setCameraPaused(false);
     setVideoSettings(null);
   }, [clearSession]);
 
@@ -125,6 +128,7 @@ export function useARSession(): ARSession {
     setError("");
     setOrientation(null);
     setStream(null);
+    setCameraPaused(false);
     setVideoSettings(null);
 
     if (!window.isSecureContext) {
@@ -296,6 +300,7 @@ export function useARSession(): ARSession {
         setError("The rear camera stopped. Start AR again to reconnect it.");
         setOrientation(null);
         setStream(null);
+        setCameraPaused(false);
         setVideoSettings(null);
       };
 
@@ -303,6 +308,12 @@ export function useARSession(): ARSession {
         window.addEventListener("deviceorientation", handleOrientation);
         window.addEventListener("deviceorientationabsolute", handleOrientation);
       }
+      const updateCameraPaused = () => {
+        if (isCurrent()) setCameraPaused(videoTrack.muted);
+      };
+      updateCameraPaused();
+      videoTrack.addEventListener("mute", updateCameraPaused);
+      videoTrack.addEventListener("unmute", updateCameraPaused);
       videoTrack.addEventListener("ended", handleTrackEnded);
       sessionCleanupRef.current = () => {
         window.removeEventListener("deviceorientation", handleOrientation);
@@ -311,6 +322,8 @@ export function useARSession(): ARSession {
           handleOrientation,
         );
         videoTrack.removeEventListener("ended", handleTrackEnded);
+        videoTrack.removeEventListener("mute", updateCameraPaused);
+        videoTrack.removeEventListener("unmute", updateCameraPaused);
       };
 
       markSensorStale();
@@ -336,6 +349,7 @@ export function useARSession(): ARSession {
       setError(cameraErrorMessage(cameraError));
       setOrientation(null);
       setStream(null);
+      setCameraPaused(false);
       setVideoSettings(null);
     }
   }, [clearSensorTimer, clearSession]);
@@ -369,6 +383,7 @@ export function useARSession(): ARSession {
     error,
     orientation,
     stream,
+    cameraPaused,
     start,
     stop,
     videoSettings,

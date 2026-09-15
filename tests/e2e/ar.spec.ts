@@ -7,28 +7,43 @@ type PermissionMode = "none" | "granted" | "denied";
 
 type ARMockOptions = {
   camera?: CameraMode;
+  muted?: boolean;
   permission?: PermissionMode;
+  playback?: "success" | "denied";
 };
 
 async function installARMock(
   page: Page,
-  { camera = "success", permission = "none" }: ARMockOptions = {},
+  {
+    camera = "success",
+    muted = false,
+    permission = "none",
+    playback = "success",
+  }: ARMockOptions = {},
 ) {
   await page.addInitScript(
-    ({ cameraMode, permissionMode }) => {
+    ({ cameraMode, initialMuted, permissionMode, playbackMode }) => {
       type MockState = {
         cameraRequests: number;
+        cameraMuted: boolean;
         constraints: MediaStreamConstraints[];
+        muteCamera: () => void;
         permissionCalls: Array<boolean | undefined>;
+        screenAngle: number;
         trackStops: number;
+        unmuteCamera: () => void;
         resolveCamera: () => void;
       };
       const testWindow = window as typeof window & { __arMock: MockState };
       const state: MockState = {
         cameraRequests: 0,
+        cameraMuted: initialMuted,
         constraints: [],
+        muteCamera: () => {},
         permissionCalls: [],
+        screenAngle: 0,
         trackStops: 0,
+        unmuteCamera: () => {},
         resolveCamera: () => {},
       };
       testWindow.__arMock = state;
@@ -36,6 +51,20 @@ async function installARMock(
       Object.defineProperty(window, "isSecureContext", {
         configurable: true,
         value: true,
+      });
+
+      const screenOrientation = new EventTarget();
+      Object.defineProperty(screenOrientation, "angle", {
+        configurable: true,
+        get: () => state.screenAngle,
+      });
+      Object.defineProperty(screen, "orientation", {
+        configurable: true,
+        value: screenOrientation,
+      });
+      Object.defineProperty(window, "orientation", {
+        configurable: true,
+        get: () => state.screenAngle,
       });
 
       const facingMode =
@@ -52,10 +81,15 @@ async function installARMock(
             : "Back Camera";
       const track = new EventTarget() as EventTarget & {
         label: string;
+        readonly muted: boolean;
         getSettings: () => MediaTrackSettings;
         stop: () => void;
       };
       track.label = label;
+      Object.defineProperty(track, "muted", {
+        configurable: true,
+        get: () => state.cameraMuted,
+      });
       track.getSettings = () => ({
         width: 720,
         height: 1280,
@@ -63,6 +97,14 @@ async function installARMock(
       });
       track.stop = () => {
         state.trackStops += 1;
+      };
+      state.muteCamera = () => {
+        state.cameraMuted = true;
+        track.dispatchEvent(new Event("mute"));
+      };
+      state.unmuteCamera = () => {
+        state.cameraMuted = false;
+        track.dispatchEvent(new Event("unmute"));
       };
 
       const stream = new MediaStream();
@@ -117,6 +159,11 @@ async function installARMock(
       Object.defineProperty(HTMLMediaElement.prototype, "play", {
         configurable: true,
         value: function () {
+          if (playbackMode === "denied") {
+            return Promise.reject(
+              new DOMException("Playback blocked", "NotAllowedError"),
+            );
+          }
           Object.defineProperties(this, {
             videoWidth: { configurable: true, value: 720 },
             videoHeight: { configurable: true, value: 1280 },
@@ -129,7 +176,12 @@ async function installARMock(
         },
       });
     },
-    { cameraMode: camera, permissionMode: permission },
+    {
+      cameraMode: camera,
+      initialMuted: muted,
+      permissionMode: permission,
+      playbackMode: playback,
+    },
   );
 }
 
@@ -320,6 +372,200 @@ test("follows an absolute heading and tilt, then opens searchable object informa
     body: await page.screenshot(),
     contentType: "image/png",
   });
+});
+
+test("taps a deterministically projected catalog star on the canvas and opens its information", async ({
+  page,
+}) => {
+  const dialog = await openCameraAR(page);
+  await startCamera(dialog);
+  await emitOrientation(page, {
+    alpha: 0,
+    beta: 90,
+    gamma: 0,
+    absolute: true,
+  });
+
+  await dialog
+    .getByRole("button", { name: "Calibrate camera alignment" })
+    .click();
+  await dialog.getByLabel("Faintest AR stars").fill("6");
+  await dialog.getByRole("button", { name: "Close calibration" }).click();
+  await dialog.getByRole("button", { name: "Search in camera AR" }).click();
+  await dialog.getByLabel("Search AR objects").fill("HIP");
+  const visibleStar = dialog
+    .locator(".ar-results button")
+    .filter({ hasText: "↑" })
+    .first();
+  await expect(visibleStar).toBeVisible();
+  const starName = (await visibleStar.locator("span").first().innerText())
+    .split("\n")[0]
+    .trim();
+  await visibleStar.click();
+  await dialog.getByRole("button", { name: "Information ↗" }).click();
+
+  const information = dialog.locator(".object-information");
+  await expect(information.getByText("Catalog identifier")).toBeVisible();
+  const directionText = await information
+    .locator("dl div")
+    .filter({ hasText: "Direction" })
+    .locator("dd")
+    .innerText();
+  const altitudeText = await information
+    .locator("dl div")
+    .filter({ hasText: "Altitude" })
+    .locator("dd")
+    .innerText();
+  const azimuth = Number.parseFloat(directionText.split("·").at(-1) ?? "");
+  const altitude = Number.parseFloat(altitudeText);
+  expect(Number.isFinite(azimuth)).toBe(true);
+  expect(Number.isFinite(altitude)).toBe(true);
+
+  await dialog.getByRole("button", { name: "Close AR information" }).click();
+  await dialog.getByRole("button", { name: "Clear AR target" }).click();
+  await emitOrientation(page, {
+    alpha: (360 - azimuth) % 360,
+    beta: 90 + altitude,
+    gamma: 0,
+    absolute: true,
+  });
+  await expect(dialog.locator(".ar-status span").first()).not.toHaveText(
+    "Alignment needed",
+  );
+
+  const canvas = dialog.getByLabel(
+    "Star and planet labels projected over the camera",
+  );
+  const bounds = await canvas.boundingBox();
+  expect(bounds).not.toBeNull();
+  await canvas.tap({
+    position: { x: bounds!.width / 2, y: bounds!.height / 2 },
+  });
+
+  await expect(dialog.locator(".ar-sheet-title h2")).toHaveText(starName);
+  await expect(dialog.locator(".object-information")).toContainText(/HIP \d+/);
+});
+
+test("keeps a physically equivalent landscape pose pointed north", async ({
+  page,
+}) => {
+  const dialog = await openCameraAR(page);
+  await startCamera(dialog);
+  await emitOrientation(page, {
+    alpha: 0,
+    beta: 90,
+    gamma: 0,
+    absolute: true,
+  });
+  await expect(dialog.locator(".ar-status span").first()).toHaveText(
+    "N 0° · altitude 0°",
+  );
+
+  await page.evaluate(() => {
+    const mock = (window as unknown as { __arMock: { screenAngle: number } })
+      .__arMock;
+    mock.screenAngle = 90;
+    screen.orientation.dispatchEvent(new Event("change"));
+  });
+  await emitOrientation(page, {
+    alpha: 90,
+    beta: 0,
+    gamma: -90,
+    absolute: true,
+  });
+  await expect(dialog.locator(".ar-status span").first()).toHaveText(
+    /^N (?:0|360)° · altitude 0°$/,
+  );
+});
+
+test("suppresses pose labels when camera playback is rejected", async ({
+  page,
+}) => {
+  const dialog = await openCameraAR(page, { playback: "denied" });
+  await startCamera(dialog);
+  await emitOrientation(page, {
+    alpha: 0,
+    beta: 90,
+    gamma: 0,
+    absolute: true,
+  });
+
+  await expect(dialog.getByRole("alert")).toContainText(
+    "The camera could not play",
+  );
+  await expect(dialog.locator(".ar-status span").first()).toHaveText(
+    "Alignment needed",
+  );
+  await expect(dialog.locator(".ar-nearby")).toContainText(
+    "Labels appear once the camera and alignment are ready.",
+  );
+});
+
+test("starts paused when the browser initially mutes the camera track", async ({
+  page,
+}) => {
+  const dialog = await openCameraAR(page, { muted: true });
+  await startCamera(dialog);
+  await emitOrientation(page, {
+    alpha: 0,
+    beta: 90,
+    gamma: 0,
+    absolute: true,
+  });
+
+  await expect(dialog.locator(".ar-header small")).toHaveText("CAMERA PAUSED");
+  await expect(dialog.getByRole("status")).toContainText(
+    "Camera paused by the browser",
+  );
+  await expect(dialog.locator(".ar-status span").first()).toHaveText(
+    "Alignment needed",
+  );
+  await expect(dialog.locator(".ar-nearby")).toContainText(
+    "Labels appear once the camera and alignment are ready.",
+  );
+});
+
+test("pauses labels on camera mute and resumes them on unmute", async ({
+  page,
+}) => {
+  const dialog = await openCameraAR(page);
+  await startCamera(dialog);
+  await emitOrientation(page, {
+    alpha: 0,
+    beta: 90,
+    gamma: 0,
+    absolute: true,
+  });
+  await expect(dialog.locator(".ar-status span").first()).toHaveText(
+    "N 0° · altitude 0°",
+  );
+
+  await page.evaluate(() =>
+    (
+      window as unknown as { __arMock: { muteCamera: () => void } }
+    ).__arMock.muteCamera(),
+  );
+  await expect(dialog.locator(".ar-header small")).toHaveText("CAMERA PAUSED");
+  await expect(dialog.getByRole("status")).toContainText(
+    "Camera paused by the browser",
+  );
+  await expect(dialog.locator(".ar-nearby")).toContainText(
+    "Labels appear once the camera and alignment are ready.",
+  );
+
+  await page.evaluate(() =>
+    (
+      window as unknown as { __arMock: { unmuteCamera: () => void } }
+    ).__arMock.unmuteCamera(),
+  );
+  await expect(dialog.locator(".ar-header small")).toHaveText("LIVE");
+  await expect(dialog.locator(".ar-status span").first()).toHaveText(
+    "N 0° · altitude 0°",
+  );
+  await expect(dialog.getByText("Camera paused by the browser")).toBeHidden();
+  await expect(dialog.locator(".ar-nearby")).not.toContainText(
+    "Labels appear once the camera and alignment are ready.",
+  );
 });
 
 test("keeps relative iOS labels hidden until north calibration and applies the correction sign", async ({

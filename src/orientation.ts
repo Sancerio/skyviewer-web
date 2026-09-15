@@ -62,8 +62,10 @@ export function deviceAttitude(
   const sS = Math.sin(screen);
 
   return {
-    right: normalize(transform(rotation, [cS, sS, 0])),
-    up: normalize(transform(rotation, [-sS, cS, 0])),
+    // Screen Orientation's positive angle describes the physical device
+    // rotation, so compensate by rotating the display basis by its inverse.
+    right: normalize(transform(rotation, [cS, -sS, 0])),
+    up: normalize(transform(rotation, [sS, cS, 0])),
     forward: normalize(transform(rotation, [0, 0, -1])),
   };
 }

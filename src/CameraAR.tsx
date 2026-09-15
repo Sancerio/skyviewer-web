@@ -153,6 +153,7 @@ export default function CameraAR({
     attitude !== null &&
     videoWidth > 0 &&
     videoReady &&
+    !session.cameraPaused &&
     !playbackError;
   const heading = attitude ? angleOf(attitude.forward) : null;
   const elevation = attitude
@@ -300,7 +301,7 @@ export default function CameraAR({
     );
   }
   const targetHint =
-    chosen && attitude
+    chosen && attitude && ready
       ? (() => {
           if (chosen.altitude < 0)
             return `${chosen.name} is below the horizon. It cannot be seen from here right now.`;
@@ -422,7 +423,11 @@ export default function CameraAR({
           <Camera size={19} />
           <strong>Camera AR</strong>
           <small>
-            {session.status === "active" ? "LIVE" : "POINT. DISCOVER."}
+            {session.status === "active"
+              ? session.cameraPaused
+                ? "CAMERA PAUSED"
+                : "LIVE"
+              : "POINT. DISCOVER."}
           </small>
         </span>
         <button
@@ -542,6 +547,12 @@ export default function CameraAR({
                   : " · compass unreliable"
                 : ""}
               {elevation! < 0 ? " · Point above the horizon" : ""}
+            </div>
+          )}
+          {session.cameraPaused && (
+            <div role="status" className="ar-callout">
+              Camera paused by the browser. Labels will resume when the
+              rear-camera feed returns.
             </div>
           )}
           {playbackError && (
@@ -734,7 +745,7 @@ export default function CameraAR({
                 <>
                   <p role="status">
                     {targetHint ||
-                      `${chosen.name}: calibrate alignment to find this object.`}
+                      `${chosen.name}: waiting for live camera and aligned motion data.`}
                   </p>
                   <div className="ar-target">
                     <span>

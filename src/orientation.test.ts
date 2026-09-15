@@ -50,13 +50,27 @@ describe("deviceAttitude physical references", () => {
     expectCentered(projectAR(90, 0, attitude, 60, 800, 600));
   });
 
-  it("rotates screen right and up for a 90-degree landscape screen", () => {
-    const attitude = deviceAttitude(0, 90, 0, 90);
+  it.each([
+    ["portrait", 0, 90, 0, 0],
+    ["landscape with the natural top at screen-left", 90, 0, -90, 90],
+    ["landscape with the natural top at screen-right", 270, 0, 90, 270],
+  ])(
+    "keeps a north-facing camera upright in %s",
+    (_name, alpha, beta, gamma, screenAngle) => {
+      const attitude = deviceAttitude(alpha, beta, gamma, screenAngle);
 
-    expectVector(attitude.right, [0, 0, 1]);
-    expectVector(attitude.up, [-1, 0, 0]);
-    expectVector(attitude.forward, [0, 1, 0]);
-  });
+      expectVector(attitude.right, [1, 0, 0]);
+      expectVector(attitude.up, [0, 0, 1]);
+      expectVector(attitude.forward, [0, 1, 0]);
+
+      const elevated = projectAR(20, 0, attitude, 60, 800, 600);
+      const eastward = projectAR(0, 20, attitude, 60, 800, 600);
+      expect(elevated.x).toBeCloseTo(400, 6);
+      expect(elevated.y).toBeCloseTo(48, 0);
+      expect(eastward.x).toBeCloseTo(652, 0);
+      expect(eastward.y).toBeCloseTo(300, 6);
+    },
+  );
 
   it("applies a clockwise manual heading calibration", () => {
     const attitude = deviceAttitude(0, 90, 0, 0, 90);
