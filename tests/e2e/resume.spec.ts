@@ -40,12 +40,21 @@ test("mobile access help and picker are visible and usable", async ({ page }, in
   await expect(page.locator(".permission-hints")).toContainText("Cannot check in advance");
   await info.attach("mobile-access-help", { body: await page.screenshot(), contentType: "image/png" });
   await page.getByRole("button", { name: "Close help" }).click();
+  await expect(page.getByRole("button", { name: "Start stargazing" })).toBeFocused();
   await page.getByRole("button", { name: "Change", exact: true }).click();
   const picker = page.getByRole("dialog", { name: "Where are you looking up?" });
   await expect(picker).toBeVisible();
+  // toBeVisible alone does not detect occlusion: the inert camera can still
+  // paint above a clickable modal. Verify the actual stacking contract too.
+  const layers = await page.evaluate(() => ({
+    picker: Number(getComputedStyle(document.querySelector(".location-picker")!).zIndex),
+    camera: Number(getComputedStyle(document.querySelector(".ar-view")!).zIndex),
+  }));
+  expect(layers.picker).toBeGreaterThan(layers.camera);
   await info.attach("mobile-location-picker", { body: await page.screenshot(), contentType: "image/png" });
   expect(await mock(page, "order")).toEqual([]);
   await picker.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("button", { name: "Change", exact: true })).toBeFocused();
   await expect(page.getByRole("button", { name: "Start stargazing" })).toBeVisible();
 });
 

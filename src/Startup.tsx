@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useEffect, type RefObject } from "react";
 import { Camera, MapPin } from "lucide-react";
 import type { ARSession } from "./useARSession";
 import type { ObserverState } from "./useObserver";
@@ -9,6 +9,9 @@ export default function Startup({ session, observer, returning, startButton, onS
   startButton: RefObject<HTMLButtonElement | null>;
   onStart: () => void; onStop: () => void; onBrowse: () => void; onHelp: () => void; onChangeLocation: () => void;
 }) {
+  // The setup subtree remounts after closing Help. Its old trigger no longer
+  // exists, so restore focus to the new primary action without scrolling it.
+  useEffect(() => { startButton.current?.focus({ preventScroll: true }); }, [startButton]);
   const starting = session.status === "starting", paused = session.status === "paused";
   const issue = session.issue ?? observer.issue;
   const phaseText = { idle: "Ready when you are", motion: "Enabling motion…", location: "Finding your location…", camera: "Opening camera…" };

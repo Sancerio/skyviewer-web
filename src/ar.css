@@ -13,11 +13,14 @@
 .ar-view .ar-reticle { z-index: 2; }
 .ar-view .ar-callout { right: 76px; max-height: 38dvh; overflow: auto; }
 .ar-callout p { margin: 6px 0; }
+.ar-view .ar-setup { padding-inline: 4px; }
 .ar-setup .primary-button, .ar-setup .secondary-button { min-height: 48px; }
 .ar-view .ar-search, .modal .coordinate-fields input { font-size: 16px; }
 .ar-nearby > button { min-width: 0; overflow-wrap: anywhere; }
 .ar-header small { white-space: nowrap; }
-.location-picker { z-index: 30; }
+/* Base styles load after component CSS. Match both classes so the base modal's
+   z-index cannot paint the picker behind the still-mounted camera (z=10). */
+.modal-backdrop.location-picker { z-index: 30; }
 .access-help-button { margin: 20px auto 0; padding: 10px; min-height: 44px; }
 .access-issue, .startup-progress { padding: 14px; margin-top: 18px; border: 1px solid #57665e; border-radius: 10px; background: #12232b; }
 .access-issue { border-color: #a08366; }
