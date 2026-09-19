@@ -28,6 +28,7 @@ export function useARSession(): ARSession {
   const cleanup = useRef<() => void>(() => {});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const motionRetryBusy = useRef(false);
+  const sampleRevision = useRef(0);
   const clear = useCallback(() => {
     if (timer.current) clearTimeout(timer.current); timer.current = null;
     cleanup.current(); cleanup.current = () => {};
@@ -43,6 +44,7 @@ export function useARSession(): ARSession {
   const awaitSensors = useCallback((token: number) => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
+      timer.current = null;
       if (mounted.current && token === generation.current) {
         // Revalidate on the next explicit retry. Never persist or assume a grant.
         motionPermission.invalidate(); setIssue("motion-missing"); setOrientation(null);
@@ -52,14 +54,20 @@ export function useARSession(): ARSession {
   const retryMotion = useCallback(async () => {
     if (!streamRef.current || motionRetryBusy.current) return;
     motionRetryBusy.current = true;
-    const token = generation.current;
+    const token = generation.current, revision = sampleRevision.current;
+    // A previous timer must not invalidate the grant while its new prompt is open.
+    if (timer.current) clearTimeout(timer.current); timer.current = null;
     motionPermission.invalidate(); setIssue(null); setOrientation(null);
     try {
       const result = await requestMotion(); // request runs in this click stack.
       if (!mounted.current || token !== generation.current) return;
-      if (result !== "granted") setIssue("motion-denied"); else awaitSensors(token);
-    } catch { if (mounted.current && token === generation.current) setIssue("motion-denied"); }
-    finally { if (token === generation.current) motionRetryBusy.current = false; }
+      if (result !== "granted") { setIssue("motion-denied"); setOrientation(null); }
+      // The browser can deliver a pose before its permission promise settles.
+      // Do not time out that valid stationary pose eight seconds later.
+      else if (sampleRevision.current === revision) awaitSensors(token);
+    } catch {
+      if (mounted.current && token === generation.current) { setIssue("motion-denied"); setOrientation(null); }
+    } finally { if (token === generation.current) motionRetryBusy.current = false; }
   }, [awaitSensors]);
   const start = useCallback(async (prepare?: () => Promise<boolean>) => {
     if (busy.current || streamRef.current) return;
@@ -86,7 +94,7 @@ export function useARSession(): ARSession {
       const now = performance.now();
       if (!sample.absolute && now - lastNorth < 1500) return;
       if (sample.absolute) lastNorth = now;
-      hasSample = true;
+      hasSample = true; sampleRevision.current++;
       if (timer.current) clearTimeout(timer.current); timer.current = null;
       pending = sample;
       if (!frame) frame = requestAnimationFrame(() => {
