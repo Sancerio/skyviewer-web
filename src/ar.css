@@ -1,0 +1,26 @@
+/* Keep the video and transparent catalog canvas in explicit, positive layers.
+   Negative stacking levels are fragile in isolated, full-screen mobile views. */
+.ar-view .ar-video { z-index: 0; pointer-events: none; }
+.ar-view .ar-canvas { z-index: 1; touch-action: none; }
+.ar-view > :not(.ar-video):not(.ar-canvas) { z-index: 2; }
+.ar-view .ar-header, .ar-view .ar-actions { z-index: 3; }
+.ar-view .ar-sheet { z-index: 4; }
+.ar-map-mode { background: radial-gradient(ellipse at top, #112938, #060b16 75%); }
+.ar-map-mode .ar-video { visibility: hidden; }
+.ar-view .ar-status { top: calc(77px + env(safe-area-inset-top, 0px)); }
+.ar-view .ar-accuracy, .ar-view .ar-callout { top: calc(132px + env(safe-area-inset-top, 0px)); }
+.ar-view .ar-actions { top: calc(218px + env(safe-area-inset-top, 0px)); }
+.ar-view .ar-bottom, .ar-view .ar-sheet { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+.ar-view .ar-reticle { z-index: 2; }
+.ar-view .ar-callout { right: 76px; }
+.ar-setup .primary-button, .ar-setup .secondary-button { min-height: 48px; }
+.ar-view .ar-search, .modal .coordinate-fields input { font-size: 16px; }
+.ar-nearby > button { min-width: 0; overflow-wrap: anywhere; }
+.ar-header small { white-space: nowrap; }
+@media (max-height: 540px) and (orientation: landscape) {
+  .ar-view .ar-status { top: 68px; }
+  .ar-view .ar-accuracy, .ar-view .ar-callout { top: 111px; max-width: 44%; }
+  .ar-view .ar-bottom { left: auto; width: min(340px, 44%); padding: 10px; }
+  .ar-view .ar-sheet { max-height: calc(100dvh - 145px); }
+  .ar-view .ar-actions { top: 84px; }
+}
