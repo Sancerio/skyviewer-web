@@ -25,7 +25,7 @@ test("location failure during live viewing retries location only", async ({ page
   await expect(page.getByRole("alert")).toContainText("Location access is off");
   await page.getByRole("button", { name: "Close display settings" }).click();
   await expect(page.locator(".ar-callout")).toContainText("Location access is off");
-  await info.attach("synthetic-location-recovery", { body: await page.screenshot(), contentType: "image/png" });
+  await info.attach("synthetic-location-recovery", { body: await page.screenshot({ animations: "disabled" }), contentType: "image/png" });
   await mock(page, "locationMode = 'success'");
   await page.getByRole("button", { name: "Try location again", exact: true }).click();
   await expect(page.locator(".ar-view")).toHaveAttribute("data-ready", "true");
@@ -38,7 +38,7 @@ test("mobile access help and picker are visible and usable", async ({ page }, in
   await page.getByRole("button", { name: "Help with access", exact: true }).click();
   await expect(page.getByRole("region", { name: "Access help" })).toBeVisible();
   await expect(page.locator(".permission-hints")).toContainText("Cannot check in advance");
-  await info.attach("mobile-access-help", { body: await page.screenshot(), contentType: "image/png" });
+  await info.attach("mobile-access-help", { body: await page.screenshot({ animations: "disabled" }), contentType: "image/png" });
   await page.getByRole("button", { name: "Close help" }).click();
   await expect(page.getByRole("button", { name: "Start stargazing" })).toBeFocused();
   await page.getByRole("button", { name: "Change", exact: true }).click();
@@ -51,7 +51,9 @@ test("mobile access help and picker are visible and usable", async ({ page }, in
     camera: Number(getComputedStyle(document.querySelector(".ar-view")!).zIndex),
   }));
   expect(layers.picker).toBeGreaterThan(layers.camera);
-  await info.attach("mobile-location-picker", { body: await page.screenshot(), contentType: "image/png" });
+  // Fast-forward finite CSS animations for this snapshot; otherwise WebKit
+  // with the synthetic clock can capture the transparent first animation frame.
+  await info.attach("mobile-location-picker", { body: await page.screenshot({ animations: "disabled" }), contentType: "image/png" });
   expect(await mock(page, "order")).toEqual([]);
   await picker.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("button", { name: "Change", exact: true })).toBeFocused();
@@ -62,7 +64,7 @@ test("pending setup clearly shows the current stage", async ({ page }, info) => 
   await openApp(page, { permission: "pending" }); await start(page);
   await expect(page.locator(".startup-progress strong")).toHaveText("Enabling motion…");
   await expect(page.locator('[aria-current="step"]')).toHaveText("Motion");
-  await info.attach("mobile-motion-progress", { body: await page.screenshot(), contentType: "image/png" });
+  await info.attach("mobile-motion-progress", { body: await page.screenshot({ animations: "disabled" }), contentType: "image/png" });
   await page.getByRole("button", { name: "Cancel setup" }).click();
   expect(await mock(page, "cameraRequests")).toBe(0);
 });
