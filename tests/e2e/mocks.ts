@@ -89,9 +89,19 @@ export async function mock(page: Page, expression: string) {
   return page.evaluate(code => Function(`return window.__arMock.${code}`)(), expression);
 }
 export async function aimAt(page: Page, name: string) {
+  // Saturn is just below Singapore's horizon at the shared fixture time.
+  // Advance the real ephemeris, rather than changing its coordinates or drawing
+  // a physically hidden planet merely to make a screenshot assertion pass.
+  if (name === "Saturn") {
+    await page.clock.setSystemTime(new Date(NOW.getTime() + 2 * 60 * 60 * 1000));
+    await page.clock.runFor(5100);
+  }
   await page.getByRole("button", { name: "Search in camera AR" }).click();
   await page.getByLabel("Search AR objects").fill(name);
-  const button = page.locator(".ar-results button").filter({ hasText: name }).filter({ hasText: "↑" }).first();
+  const results = page.locator(".ar-results button");
+  // HIP is a searchable catalog alias; bright stars display their proper names.
+  const matches = name === "HIP" ? results : results.filter({ hasText: name });
+  const button = matches.filter({ hasText: "↑" }).first();
   await expect(button).toBeVisible();
   const actualName = (await button.locator("span").first().innerText()).split("\n")[0];
   await button.click();
