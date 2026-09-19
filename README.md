@@ -1,84 +1,91 @@
 # SkyViewer Web
 
-A free, open-source camera AR sky viewer that runs in your phone browser.
+A free, open-source camera AR sky viewer for your phone browser.
 
 [Open the app](https://sancerio.github.io/skyviewer-web/)
 
 ## Point and explore
 
-The app opens directly to Camera AR setup. Confirm your location, allow camera
-and motion access, then point your phone at the sky. There is no map dashboard or
-mode selector. Stopping the camera returns to setup; permissions are never
-requested automatically.
+Tap **Start AR · use my location**, allow location, motion and camera access, then
+point your phone at the sky. GPS and compass alignment are automatic. There is
+no required city picker, flat-phone step, north calibration or heading slider.
+Permissions are requested only after your gesture, never on page load.
 
-- 5,044 catalog stars plus calculated Sun, Moon and seven planets.
-- Rear-camera overlay with heading, tilt and roll, portrait/landscape support,
-  north calibration and adjustable overlay scale.
-- Tap labels or search for objects, follow target guidance and read available facts.
-- City presets, manual coordinates and opt-in geolocation inside camera setup.
-- Current-time positions; camera/motion errors stay in the camera flow with retry.
-- No account, API key, analytics, recording or backend. Catalog and fonts are bundled.
+- 5,044 magnitude-6 catalog stars, plus calculated Sun, Moon and seven planets.
+- Filled, high-contrast star and planet markers; Moon phase with its bright limb
+  oriented toward the Sun; collision-managed labels, search and object details.
+- Rear-camera perspective projection with heading, tilt, roll, screen rotation
+  and video-cover cropping. Magnetic north is corrected locally with WMM2025.
+- Stars remain visible when the phone is stationary. Camera pause and permission
+  failures have explicit recovery states rather than an unexplained empty view.
+- Optional sky-map fallback supports dragging and arrow keys, clearly labelled
+  as not camera-aligned. Manual location is only a fallback or exploration option.
+- No account, API key, analytics, recording, microphone capture or backend.
 
-The initial location is explicitly labeled Singapore. It is a preset, not a guess
-at your location. Enter another location or request geolocation to change it.
-Location and settings live only in page memory and reset on reload. Browser/OS
-location services have their own privacy policies; the app does not send your
-coordinates anywhere. GitHub Pages serves the static files and may keep normal
-hosting access logs.
+There is no assumed Singapore location. Until a real GPS fix or an explicit
+manual location is available, the app does not pretend to know the local sky.
+Coordinates and settings stay in page memory and reset on reload. Browser/OS
+location services have their own policies; the application does not upload your
+location or camera frames. GitHub Pages may keep normal hosting access logs.
 
-## Run locally
+## Run and verify
 
 Node.js 22.12+ or 24 LTS:
 
 ```sh
 npm ci
 npm run dev
-```
-
-## Verify
-
-```sh
 npm test
 npm run build
-```
-
-On Linux, run the automated browser suite:
-
-```sh
+# Linux browser suite: desktop Chromium, Android-like Chromium, iPhone-like WebKit
 npx playwright install --with-deps chromium webkit
 npm run test:e2e
 ```
 
-The same tests run in GitHub Actions before Pages deployment. The repository's
-browser suite deliberately does not launch local macOS GUI browsers. Use a
-managed browser for local Mac checks. See [verification](docs/VERIFICATION.md)
-for evidence, test coverage, and the outstanding physical-device checklist.
+The same build and tests run in GitHub Actions before Pages deployment. Browser
+tests use synthetic camera, location and motion data: they are not a substitute
+for physical-phone testing. See [Camera AR](docs/CAMERA_AR.md) for the current
+architecture and outdoor verification checklist. Earlier verification documents
+record historical versions, not evidence for this implementation.
 
-## Scope and architecture
+## Architecture and data
 
-React + TypeScript + Vite, a Canvas 2D perspective sky renderer, and Astronomy
-Engine 2.1.19. Calculations stay on the client. Original pinned catalog files are
-retained in `src/data`; `npm run catalog` regenerates the smaller browser subset.
+React + TypeScript + Vite, Canvas 2D, Astronomy Engine 2.1.19, and an offline
+WMM2025 declination evaluator. No new runtime dependency or external API is required.
+Original pinned catalog files remain in `src/data`; `npm run catalog` regenerates
+the browser subset.
 
-- [Competitive study: SkyView, Sky Guide, Star Walk 2, Stellarium](docs/COMPETITIVE_RESEARCH.md)
-- [Camera AR operation and validation](docs/CAMERA_AR.md)
-- [Product scope, architecture, and roadmap](docs/SCOPE.md)
-- [Data provenance, coordinate conventions, and attribution](docs/DATA.md)
-- [Verification plan and results](docs/VERIFICATION.md)
+- [Current camera AR operation and verification](docs/CAMERA_AR.md)
+- [Catalog provenance and attribution](docs/DATA.md)
+- [Competitive research](docs/COMPETITIVE_RESEARCH.md)
+- [Historical scope](docs/SCOPE.md)
+- [Historical verification](docs/VERIFICATION.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Limits
 
-This calculated sky overlay does not predict weather or naked-eye visibility. Geometric
-positions omit atmospheric refraction, terrain, extinction and light pollution;
-catalog stars omit proper motion. Discs are symbols, not angular sizes or a Moon
-phase rendering. Camera AR uses full device orientation and estimated camera field of view; physical iOS/Android alignment testing remains outstanding. No satellites, deep-sky images, offline service worker, or telescope control in v0.2.
+This is a calculated, sensor-based sky overlay, not image recognition or native
+visual-inertial AR. Geometric astronomical positions omit atmospheric refraction,
+terrain, extinction and light pollution; stars omit proper motion. Markers are
+enlarged for readability. The Moon phase is illustrated, not a surface photograph.
+
+Camera field of view is estimated (65-degree long edge, automatically cropped).
+Browser APIs do not provide a universally calibrated lens/IMU model. Magnetometer
+interference, sensor conventions and lens distortion can still cause visible
+alignment error. Physical Safari/Android sky alignment must be checked before
+claiming precision. WMM2025 expires at 2030; outside its validity or near weak
+polar fields, the UI explicitly reports magnetic rather than corrected true north.
+Devices without a usable absolute compass get a sky map, not invented AR bearings.
+
+No satellites, deep-sky images, offline service worker or telescope control.
 Never point binoculars or a telescope at the Sun using this app.
 
 ## License
 
 Application code: [MIT](LICENSE). Catalog: D3 Celestial BSD-3-Clause with credits
-in [DATA.md](docs/DATA.md). Third-party dependency and font notices are included
-in [public/THIRD_PARTY_NOTICES.txt](public/THIRD_PARTY_NOTICES.txt), also distributed
-with the built website. This project is independent and not affiliated with
-similarly named commercial sky-viewing apps.
+in [DATA.md](docs/DATA.md). NOAA NCEI/BGS WMM2025 coefficients and reference values
+are public-domain government material, not covered by the application's copyright;
+see https://doi.org/10.25921/aqfd-sd83 and `src/declination.ts` for attribution.
+Dependency and font notices are distributed in
+[public/THIRD_PARTY_NOTICES.txt](public/THIRD_PARTY_NOTICES.txt).
+This project is independent of similarly named commercial sky-viewing apps.
