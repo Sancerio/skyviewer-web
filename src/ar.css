@@ -1,5 +1,4 @@
-/* Keep the video and transparent catalog canvas in explicit, positive layers.
-   Negative stacking levels are fragile in isolated, full-screen mobile views. */
+/* Explicit layers keep the live camera behind the transparent sky. */
 .ar-view .ar-video { z-index: 0; pointer-events: none; }
 .ar-view .ar-canvas { z-index: 1; touch-action: none; }
 .ar-view > :not(.ar-video):not(.ar-canvas) { z-index: 2; }
@@ -8,15 +7,34 @@
 .ar-map-mode { background: radial-gradient(ellipse at top, #112938, #060b16 75%); }
 .ar-map-mode .ar-video { visibility: hidden; }
 .ar-view .ar-status { top: calc(77px + env(safe-area-inset-top, 0px)); }
-.ar-view .ar-accuracy, .ar-view .ar-callout { top: calc(132px + env(safe-area-inset-top, 0px)); }
-.ar-view .ar-actions { top: calc(218px + env(safe-area-inset-top, 0px)); }
+.ar-view .ar-accuracy, .ar-view .ar-callout { top: calc(140px + env(safe-area-inset-top, 0px)); }
+.ar-view .ar-actions { top: calc(265px + env(safe-area-inset-top, 0px)); }
 .ar-view .ar-bottom, .ar-view .ar-sheet { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
 .ar-view .ar-reticle { z-index: 2; }
-.ar-view .ar-callout { right: 76px; }
+.ar-view .ar-callout { right: 76px; max-height: 38dvh; overflow: auto; }
+.ar-callout p { margin: 6px 0; }
+.ar-view .ar-setup { padding-inline: 4px; }
 .ar-setup .primary-button, .ar-setup .secondary-button { min-height: 48px; }
 .ar-view .ar-search, .modal .coordinate-fields input { font-size: 16px; }
 .ar-nearby > button { min-width: 0; overflow-wrap: anywhere; }
 .ar-header small { white-space: nowrap; }
+/* Base styles load after component CSS. Match both classes so the base modal's
+   z-index cannot paint the picker behind the still-mounted camera (z=10). */
+.modal-backdrop.location-picker { z-index: 30; }
+.access-help-button { margin: 20px auto 0; padding: 10px; min-height: 44px; }
+.access-issue, .startup-progress { padding: 14px; margin-top: 18px; border: 1px solid #57665e; border-radius: 10px; background: #12232b; }
+.access-issue { border-color: #a08366; }
+.access-issue strong, .startup-progress strong { font-size: 14px; }
+.access-issue p, .startup-progress p { margin: 6px 0; }
+.startup-progress ol { display: flex; padding: 0; list-style: none; gap: 8px; }
+.startup-progress li { flex: 1; padding: 8px 4px; font-size: 11px; border-top: 2px solid #526466; }
+.startup-progress li[aria-current="step"] { border-color: #daebc6; color: #effade; }
+.startup-progress li[data-complete="true"] { border-color: #8ead9c; }
+.permission-hints { font-size: 12px; }
+.permission-hints div { display: flex; justify-content: space-between; gap: 16px; margin: 12px 0; }
+.permission-hints dd { margin: 0; text-align: right; color: #bdd0c5; }
+.ar-sheet h3 { font-size: 15px; margin: 22px 0 6px; }
+.ar-view .setup-help { top: calc(84px + env(safe-area-inset-top)); bottom: 20px; max-height: none; left: 50%; transform: translateX(-50%); }
 @media (max-height: 540px) and (orientation: landscape) {
   .ar-view .ar-status { top: 68px; }
   .ar-view .ar-accuracy, .ar-view .ar-callout { top: 111px; max-width: 44%; }

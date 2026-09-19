@@ -1,116 +1,115 @@
-# Automatic camera AR: operation, architecture and verification
+# Camera AR: operation and verification
 
-Updated 2026-09-19. This document supersedes earlier manual-calibration and
-camera-only interface descriptions in the historical scope/verification documents.
+Updated 2026-09-19. This document and [PERMISSIONS.md](PERMISSIONS.md) supersede
+older manual-calibration, always-reset, continuous-GPS-watch and camera-only
+interface descriptions in historical scope/verification files.
 
 ## User flow
 
-1. Open on HTTPS in Safari or Chrome and tap **Start AR · use my location**.
-2. Allow the browser's location, motion and rear-camera requests.
-3. Point at the sky. There is no mandatory location picker or north calibration.
+First visit: **Start stargazing → Motion → Location → Camera**. Approve requests
+when the browser asks, then point at the sky. No city picker, flat-phone alignment
+or manual north step is required. Returning visitors see **Open camera**. Capture
+stops in the background; return to the same live document with **Resume stargazing**.
+A cold Home Screen launch may require iOS permission again, independently of saved
+onboarding preferences.
 
-`DeviceOrientationEvent.requestPermission(true)` runs in the original start-button
-click stack, before any async camera or GPS work. Camera capture begins after
-motion permission is granted where that permission API exists. GPS acquisition
-starts from the same user action, with a quick initial fix and high-accuracy watch.
-The watch refines the sky automatically. No default city is passed off as GPS.
+The location picker is optional and stays within the mounted camera session.
+Default current-location mode uses a one-shot fix. The HUD labels its age. A fix
+older than five minutes is refreshed on restart, or manually via **Use current
+location**. Explicitly saved observing places are rounded and labelled as fixed
+places, not live GPS. No default Singapore location is assumed.
 
-Denied/unavailable location, motion, rear camera and playback have distinct
-messages and retry actions. A real compass reference is required for camera
-labels. Relative-only yaw is never silently treated as north. **Explore sky map
-instead** works without a camera or compass, using drag or arrow keys, and is
-explicitly labelled *not camera-aligned*. Location is still required for a local
-sky; city presets and coordinates are an optional recovery/exploration path.
+Errors identify the failing feature and provide targeted retry. Motion retry does
+not reopen the camera; preview resume uses the existing stream. **Help with
+access** offers explanations and passive browser permission hints. **Explore
+without camera** is a drag/keyboard sky map, clearly not camera-aligned.
 
-## Orientation and rendering
+## Modules
 
-- `compass.ts` accepts W3C absolute events and iOS `webkitCompassHeading`, including
-  the common iOS case where `event.absolute` is false. Invalid/null angles and
-  invalid compass accuracy do not establish a north reference.
-- `declination.ts` computes the WMM2025 east-positive magnetic-to-true-north
-  correction locally from coordinates and date. It uses degree/order 12 Schmidt
-  semi-normalised harmonics on WGS84, without a network service or new dependency.
-  Its 12 fixtures are NOAA's published WMM2025 test values (tolerance 0.01 degrees).
-  Dates outside 2025–2029, geographic poles and weak horizontal fields are marked
-  unavailable rather than silently treated as zero declination.
-- `orientation.ts` retains the W3C Z-X-Y rotation into east/north/up, rear-camera
-  projection, roll, screen orientation and `object-fit: cover` field-of-view math.
-- `useARSession.ts` installs sensor listeners before waiting for the camera,
-  coalesces events with animation frames and prefers current absolute readings.
-  Only a missing first pose times out. Sensor silence while stationary is legal;
-  it no longer deletes a valid attitude after three seconds.
-- `CameraAR.tsx` computes current-time, observer-specific ephemerides every five
-  seconds. Above-horizon stars through magnitude 6 and the solar-system objects
-  are projected. Below-horizon targets are explicitly explained, not drawn above
-  the ground. Search and turn/tilt guidance remain available.
-- `drawAR.ts` draws filled stellar discs, distinct planet markers, a phase-aware
-  Moon whose illuminated limb points toward the projected Sun, horizon/cardinals
-  and readable labels. Label collisions never erase the underlying object.
-- `ar.css` explicitly layers video at z=0, canvas at z=1, controls above them.
-  Canvas backing stores resize only with viewport/DPR changes, not each pose.
+- `useARSession.ts`: camera lifecycle, sequential startup stages, synchronous
+  initial motion request, cancellation, pause/resume and motion-only retry.
+- `permissions.ts`: live-document motion gate, defensive passive permission
+  queries, Home Screen and iOS detection. Grants are never persisted by the app.
+- `useObserver.ts`: one-shot GPS, recent-fix reuse, generation guards, chosen and
+  opt-in saved observing places.
+- `preferences.ts`: versioned validated local preferences, approximate fixed
+  places and storage-failure handling.
+- `messages.ts`, `Startup.tsx`, `AccessHelp.tsx`: structured recovery messages,
+  first/return/paused states and platform-aware help.
+- `App.tsx`: in-page location dialog with inert background, no camera remount.
+- `CameraAR.tsx`: current sky, live camera/canvas, search, target guidance,
+  information/display/help sheets and labelled map fallback.
+- `compass.ts`: iPhone `webkitCompassHeading` and Android absolute events;
+  rejects invalid angles and invalid compass references.
+- `declination.ts`: offline degree/order 12 WMM2025 magnetic-to-true-north
+  correction with 12 published NOAA reference fixtures. No external location API.
+- `orientation.ts`: W3C Z-X-Y to east/north/up, rear-camera perspective,
+  screen orientation/roll and cover-crop field-of-view compensation.
+- `drawAR.ts`: filled stellar/planet markers, phase-aware Moon with its bright
+  limb toward the projected Sun, horizon/cardinals and collision-managed labels.
+- `ObjectInformation.tsx`: source-linked facts; `search.ts`: name/identifier/alias search.
 
-Markers are intentionally enlarged. Moon phase and Saturn rings are illustrative,
-not resolved camera imagery. Stars shown in daylight are a guide, not a promise
-that a camera or the unaided eye can see them.
+## Rendering and accuracy contract
 
-## Lifecycle and privacy
+Current observer/time ephemerides are recomputed every five seconds. Search covers
+5,044 bundled magnitude-6 stars, the Sun, Moon and seven planets. Above-horizon
+objects are projected through the full device attitude. Below-horizon targets
+are explained, not moved into view. Faint-star density is remembered locally.
+Labels may be suppressed for overlap, but underlying object markers remain.
 
-Stopping, closing, page hiding and unmounting release camera tracks and location
-watches. Generations invalidate delayed GPS/camera callbacks, so a late result
-cannot overwrite a selected location or reopen a cancelled camera. Mute pauses
-labels; unmute restores them without a calibration step. Track end and rejected
-video playback produce explicit recovery states. Detected front/unverifiable
-cameras are not represented as rear-camera AR. Audio is always false.
+Valid stationary poses are retained. The first missing pose times out with a
+motion-specific action. Absolute/relative readings are not interchangeable;
+relative-only yaw cannot establish north. Camera mute/playback failure prevents
+an apparently live aligned overlay until capture/preview resumes.
 
-The app never records, uploads camera frames, sends coordinates to an API, or
-persists sensitive location data. Static hosting and OS/browser location services
-have their own policies. External information links load only when opened.
+Video, canvas and controls have explicit stacking layers. Canvas backing size is
+changed only for viewport/DPR changes, not every pose update. Sensor events are
+coalesced with animation frames. These are application optimizations, not an
+assertion of measured physical-device frame rate.
 
-## Automated coverage
+Markers are enlarged for readability. Moon phase and Saturn rings are illustrated,
+not resolved camera imagery. Geometric positions omit refraction, terrain,
+extinction and light pollution; stars omit proper motion. Lens FOV is estimated
+at 65 degrees along the long edge and adjusted for cropping. WMM2025 covers
+2025–2029 and does not correct local magnetic interference. Outside validity or
+at unavailable polar/weak fields, the UI reports no true-north correction.
 
-Run `npm test`, `npm run build`, and `npm run test:e2e` (Chromium and WebKit installed).
-The suite retains astronomical/projection/search unit tests and adds automatic
-compass, invalid-input and WMM2025 tests. Browser tests use mocked permissions,
-media tracks, geolocation and synthetic orientation in Android-like Chromium and
-iPhone-like WebKit. They cover:
+## Privacy and lifecycle
 
-- One-gesture GPS/camera/motion startup; no premature permission request.
-- iOS compass with relative `alpha`, tilt, absolute Android readings, landscape.
-- Real canvas pixels and tap selection for a catalog star, Moon and Saturn,
-  aimed using their actual ephemeris positions rather than fabricated object data.
-- Stationary pose retention, early sensor events during a pending camera, GPS
-  refinement, invalid compass data and first-sensor timeout.
-- Denials, missing rear camera, playback failure, mute/unmute, track end, stop,
-  pagehide, late camera/GPS cancellation and manual fallback.
-- Explicit sky-map fallback, keyboard exploration and narrow-screen layout.
+No recording, microphone, analytics, frame upload or coordinate service. Capture
+stops on stop, close, pagehide, hidden visibility and unmount. Pending callbacks
+are generation-guarded; late cancelled camera streams are stopped. The app never
+starts hardware on reload or automatically on visible-page resume. LocalStorage
+contains display preferences and only explicitly saved rounded places, never
+system authorization. More detail: [PERMISSIONS.md](PERMISSIONS.md).
 
-Screenshots produced by these tests are **synthetic**, not camera-to-sky evidence.
+## Verification
 
-## Physical-device acceptance gate (not yet verified)
+Run `npm test`, `npm run build` and the Linux Playwright suite. Numerical tests
+cover astronomy, projection, compass and WMM. Browser projects exercise desktop
+Chromium, Android-like Chromium and iPhone-like WebKit with synthetic hardware.
+Tests assert real rasterized pixels/tap selection for a catalog star, Moon and
+Saturn, plus permission-call counts, startup stages, same-session restart,
+cold-launch preferences, saved-place consent, Help, cancellation, invalid/absent
+sensors, video mute/denial, location edits and page lifecycle.
 
-Test on actual iPhone Safari and Android Chrome, outdoors over HTTPS:
+Screenshots are **synthetic UI evidence**. They cannot establish physical iPhone
+permission persistence or camera-to-sky alignment.
 
-1. Start from a fresh page, grant permissions and obtain a real GPS fix without
-   selecting a city or aligning north. Repeat deny/retry paths.
-2. Centre the Moon and at least two well-separated bright stars/planets. Record
-   label-to-object angular residuals, device/browser version, time and location.
-3. Repeat upright, tilted through the horizon, near the zenith, in landscape and
-   with roll. Check manufacturer-specific compass-heading conventions and camera
-   selection; synthetic sensor tests cannot establish these hardware behaviours.
-4. Hold still, turn through north, lock/background/reopen, and confirm the camera
-   indicator switches off on stop. Confirm sky-map fallback on unsupported hardware.
+Before claiming optical accuracy, test actual iPhone Safari and Android Chrome
+outdoors over HTTPS. Record device/browser, UTC, observer place and angular
+residuals on the Moon and at least two separated bright targets; repeat at the
+horizon, near zenith, in portrait/landscape and with roll. Check camera selection,
+compass conventions, background/lock cleanup and permission denial/retry. Browser
+intrinsic/lens and camera/IMU offsets can still produce visible errors.
 
-The 65-degree estimated long-edge FOV is crop-aware, not a calibrated intrinsic
-matrix. Sensor bias, magnetic interference, camera/IMU offsets and lens distortion
-remain possible. WMM corrects global magnetic variation, not local interference.
-Do not claim native-app optical precision or a particular angular error until
-physical-device evidence is collected. The app does not use WebXR visual tracking.
+## Primary references
 
-## Sources
+- [Device Orientation and Motion](https://www.w3.org/TR/orientation-event/)
+- [Media Capture and Streams](https://www.w3.org/TR/mediacapture-streams/)
+- [WebKit magnetic-heading source](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/platform/ios/WebCoreMotionManager.mm)
+- [NOAA/BGS WMM2025](https://doi.org/10.25921/aqfd-sd83)
+- [NOAA WMM2025 fixtures](https://www.ncei.noaa.gov/sites/default/files/2025-02/WMM2025_TEST_VALUES.txt)
+- [Catalog provenance](DATA.md)
 
-- W3C orientation: https://www.w3.org/TR/orientation-event/
-- W3C media capture: https://www.w3.org/TR/mediacapture-streams/
-- WebKit magnetic heading source: https://github.com/WebKit/WebKit/blob/main/Source/WebCore/platform/ios/WebCoreMotionManager.mm
-- NOAA/BGS WMM2025: https://doi.org/10.25921/aqfd-sd83
-- NOAA reference fixtures: https://www.ncei.noaa.gov/sites/default/files/2025-02/WMM2025_TEST_VALUES.txt
-- Catalog and astronomy provenance: [DATA.md](DATA.md)
+Never aim binoculars or a telescope at the Sun using this app.

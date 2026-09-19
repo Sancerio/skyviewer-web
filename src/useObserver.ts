@@ -1,73 +1,97 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Location } from "./sky";
-
+import { readPreferences, savePreferences, observingPlace, validPlace } from "./preferences";
+import { issueText, type IssueCode } from "./messages";
+export const LOCATION_REUSE_MS = 5 * 60_000;
 export function useObserver() {
-  const [location, setLocation] = useState<Location | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const [source, setSource] = useState<"gps" | "manual">("gps");
-  const [error, setError] = useState("");
+  const [savedPlace, setSavedPlace] = useState(() => readPreferences().savedPlace);
+  const [location, setLocation] = useState<Location | null>(savedPlace);
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(savedPlace ? "ready" : "idle");
+  const [source, setSource] = useState<"gps" | "manual" | "saved">(savedPlace ? "saved" : "gps");
+  const [issue, setIssue] = useState<IssueCode | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [fixAt, setFixAt] = useState<number | null>(null);
   const generation = useRef(0);
-  const watch = useRef<number | null>(null);
+  const current = useRef({ location, source, fixAt });
+  current.current = { location, source, fixAt };
+  const pending = useRef<Promise<boolean> | null>(null);
+  const settle = useRef<(ok: boolean) => void>(() => {});
   const cancel = useCallback(() => {
-    generation.current++;
-    if (watch.current !== null) navigator.geolocation?.clearWatch(watch.current);
-    watch.current = null;
+    generation.current++; settle.current(false); pending.current = null;
     setStatus(previous => previous === "loading" ? "idle" : previous);
   }, []);
   useEffect(() => {
     const hide = () => { if (document.visibilityState === "hidden") cancel(); };
-    window.addEventListener("pagehide", cancel);
-    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("pagehide", cancel); document.addEventListener("visibilitychange", hide);
     return () => { cancel(); window.removeEventListener("pagehide", cancel); document.removeEventListener("visibilitychange", hide); };
   }, [cancel]);
   const choose = useCallback((value: Location) => {
-    cancel();
-    setLocation(value); setSource("manual"); setAccuracy(null);
-    setStatus("ready"); setError("");
+    if (!validPlace(value)) return;
+    cancel(); current.current = { location: value, source: "manual", fixAt: null };
+    setLocation(value); setSource("manual"); setAccuracy(null); setFixAt(null); setStatus("ready"); setIssue(null);
   }, [cancel]);
-  const request = useCallback((onSuccess?: () => void) => {
-    cancel();
-    const token = generation.current;
-    setSource("gps"); setLocation(null); setAccuracy(null);
-    setStatus("loading"); setError("");
-    if (!window.isSecureContext || !navigator.geolocation) {
-      setStatus("error");
-      setError("Location needs HTTPS and a browser with location access. Open this page in Safari or Chrome, or choose a location.");
-      return;
-    }
-    let received = false;
-    const success = (position: GeolocationPosition) => {
+  const request = useCallback((onSuccess?: () => void): Promise<boolean> => {
+    // One acquisition, no concurrent getCurrentPosition + watchPosition prompts.
+    if (pending.current) return pending.current.then(ok => { if (ok) onSuccess?.(); return ok; });
+    const token = ++generation.current;
+    setStatus("loading"); setIssue(null);
+    let resolve!: (ok: boolean) => void;
+    const result = new Promise<boolean>(r => { resolve = r; });
+    pending.current = result; settle.current = resolve;
+    const finish = (ok: boolean) => {
       if (token !== generation.current) return;
-      const { latitude, longitude, accuracy: metres } = position.coords;
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
-          Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return;
-      setLocation({ name: "Your location", latitude, longitude });
-      setAccuracy(Number.isFinite(metres) ? metres : null);
-      setStatus("ready"); setError("");
-      if (!received) { received = true; onSuccess?.(); }
+      pending.current = null; resolve(ok);
+      if (ok) onSuccess?.();
     };
-    const failure = (reason: GeolocationPositionError) => {
+    const fail = (code: IssueCode) => {
       if (token !== generation.current) return;
-      if (received && reason.code !== 1) return; // Keep the last successful fix.
-      if (reason.code === 1) cancel();
-      setLocation(null); setStatus("error");
-      setError(reason.code === 1
-        ? "Location access was denied. Allow location in your browser's site settings, then retry, or choose a location."
-        : reason.code === 3
-          ? "Finding your location timed out. Retry near a window or outdoors, or choose a location."
-          : "Your location is unavailable. Check location services, retry, or choose a location.");
+      // A user-chosen fixed place is still usable; a failed current GPS request
+      // must never be relabelled as a fresh fix.
+      if (current.current.source === "gps") { setLocation(null); setAccuracy(null); setFixAt(null);
+        current.current = { location: null, source: "gps", fixAt: null }; }
+      setStatus("error"); setIssue(code); finish(false);
     };
+    if (!window.isSecureContext) { fail("secure"); return result; }
+    if (!navigator.geolocation) { fail("location-missing"); return result; }
     try {
-      navigator.geolocation.getCurrentPosition(success, failure,
-        { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
-      // Refine the first network fix with GPS, and follow changes without a picker.
-      if (token === generation.current && navigator.geolocation.watchPosition) watch.current = navigator.geolocation.watchPosition(
-        success, failure, { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 });
-    } catch {
-      setStatus("error"); setError("Location could not be started. Check browser permissions and retry.");
+      navigator.geolocation.getCurrentPosition(position => {
+        if (token !== generation.current) return;
+        const place = { name: "Your location", latitude: position.coords.latitude, longitude: position.coords.longitude };
+        if (!validPlace(place)) { fail("location-missing"); return; }
+        const now = Date.now();
+        const timestamp = Number.isFinite(position.timestamp) ? Math.min(position.timestamp, now) : now;
+        current.current = { location: place, source: "gps", fixAt: timestamp };
+        setLocation(place); setSource("gps"); setFixAt(timestamp);
+        setAccuracy(Number.isFinite(position.coords.accuracy) && position.coords.accuracy >= 0 ? position.coords.accuracy : null);
+        setStatus("ready"); setIssue(null); finish(true);
+      }, error => fail(error.code === 1 ? "location-denied" : error.code === 3 ? "location-timeout" : "location-missing"),
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+    } catch { fail("location-missing"); }
+    return result;
+  }, []);
+  const ensure = useCallback((): Promise<boolean> => {
+    const value = current.current;
+    const age = value.fixAt === null ? Infinity : Date.now() - value.fixAt;
+    if (value.location && (value.source !== "gps" || (age >= 0 && age < LOCATION_REUSE_MS))) return Promise.resolve(true);
+    return request();
+  }, [request]);
+  const remember = useCallback(() => {
+    const place = current.current.location;
+    if (!place) return false;
+    const saved = observingPlace(place);
+    if (!savePreferences({ savedPlace: saved })) return false;
+    setSavedPlace(saved); return true;
+  }, []);
+  const forgetPlace = useCallback(() => {
+    if (!savePreferences({ savedPlace: null })) return false;
+    setSavedPlace(null);
+    if (current.current.source === "saved") {
+      cancel(); current.current = { location: null, source: "gps", fixAt: null };
+      setLocation(null); setSource("gps"); setFixAt(null); setAccuracy(null); setStatus("idle");
     }
+    return true;
   }, [cancel]);
-  return { location, status, source, error, accuracy, request, choose, cancel };
+  return { location, status, source, issue, error: issue ? issueText(issue) : "", accuracy, fixAt,
+    request, ensure, choose, cancel, savedPlace, remember, forgetPlace };
 }
 export type ObserverState = ReturnType<typeof useObserver>;

@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const mobileSuites = ["**/ar.spec.ts", "**/resume.spec.ts"];
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -7,10 +8,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI
-    ? [
-        ["github"],
-        ["html", { open: "never", outputFolder: "playwright-report" }],
-      ]
+    ? [["github"], ["html", { open: "never", outputFolder: "playwright-report" }]]
     : "list",
   use: {
     baseURL: "http://127.0.0.1:4173",
@@ -18,21 +16,9 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    {
-      name: "chromium",
-      testIgnore: "**/ar.spec.ts",
-      use: { ...devices["Desktop Chrome"] },
-    },
-    {
-      name: "ar-android",
-      testMatch: "**/ar.spec.ts",
-      use: { ...devices["Pixel 5"], browserName: "chromium" },
-    },
-    {
-      name: "ar-ios",
-      testMatch: "**/ar.spec.ts",
-      use: { ...devices["iPhone 13"], browserName: "webkit" },
-    },
+    { name: "chromium", testIgnore: mobileSuites, use: { ...devices["Desktop Chrome"] } },
+    { name: "ar-android", testMatch: mobileSuites, use: { ...devices["Pixel 5"], browserName: "chromium" } },
+    { name: "ar-ios", testMatch: mobileSuites, use: { ...devices["iPhone 13"], browserName: "webkit" } },
   ],
   webServer: {
     command: "npm run build && npm run preview -- --host 127.0.0.1 --port 4173",

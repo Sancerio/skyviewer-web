@@ -1,0 +1,15 @@
+{
+  "id": "./",
+  "name": "SkyViewer",
+  "short_name": "SkyViewer",
+  "description": "Point your phone to discover stars, the Moon and planets.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#080d14",
+  "theme_color": "#080d14",
+  "icons": [
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
